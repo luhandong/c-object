@@ -6,6 +6,11 @@
 #include<stdlib.h>
 #include<stdio.h>
 #include"cfg.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include<unistd.h>
+
 
 namespace file_{
 	class file
@@ -34,8 +39,8 @@ namespace file_{
 			int setReadPath(const char * readPath);
 			int setWritePath(const char * writePath);
 			int getFileCharaterNumber();
-			char * readFile();
-			int writeFile(char *  data);
+			char * readFile(int * data_len);
+			int writeFile(char *  data,int data_len);
 
 		private:
 			int fd;

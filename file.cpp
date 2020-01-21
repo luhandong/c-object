@@ -64,7 +64,7 @@ int file::getFileCharaterNumber()
 	{
 		if(f_readPath != nullptr && f_writePath == nullptr)
 		{
-			fp = fopen(f_readPath,"r");
+			fp = fopen(f_readPath,"r+");
 			if(fp == nullptr)
 			{
 				cerr<<"fopen f_readPath err"<<endl;
@@ -85,7 +85,7 @@ int file::getFileCharaterNumber()
 		}
 		else if(f_readPath ==nullptr && f_writePath != nullptr)
 		{
-			fp = fopen(f_writePath,"r");
+			fp = fopen(f_writePath,"r+");
 			if(fp == nullptr)
 			{
 				cerr<<"fopen f_writePath err"<<endl;
@@ -117,15 +117,16 @@ err:
 	return -1;
 }
 
-char * file::readFile(){
+char * file::readFile(int * data_len){
 	using namespace std;
 	if(f_readPath != nullptr && f_writePath == nullptr)
 	{
-		FILE * fp;
-		fp = fopen(f_readPath,"r");
-		if(fp == nullptr)
+		int fd=0;
+		int count=0;
+		fd = open(f_readPath,O_RDONLY);
+		if(fd < 0)
 		{
-			cerr<<"fopen f_readPath "<<endl;
+			cerr<<"open f_readPath "<<endl;
 			goto err;
 		}
 
@@ -133,50 +134,56 @@ char * file::readFile(){
 
 		f_str = new char[str_num];
 
-		if(fread(f_str,str_num,1,fp)<=0)
+		for(count = 0; count<str_num;count++)
 		{
-			cout<<"fread f_readPath"<<endl;
-			fclose(fp);
-			goto err;
+			if(read(fd,&(f_str[count]),1)!=1)
+			{
+			//	count<<"read  error"<<endl;
+				close(fd);
+				goto err;
+			}
 		}
-
 	}
 	else
 	{
 		cout<<"filePath is err,"<<endl;
 		goto err;
 	}
-
+	*data_len = str_num;
 	return f_str;
 err:
 	return nullptr;
 
 }
 
-int file::writeFile(char *  data)
+int file::writeFile(char *  data,int data_len_)
 {
 	using namespace std;
 	if(f_writePath != nullptr && f_readPath == nullptr)
 	{
-		FILE * fp;
-		int data_len=0;
-		f_str = new char[strlen(data)];
+		printf("data_len is %d\n",data_len_);
+		int fd =0;
+		int count = 0;
+		f_str = new char[data_len_+1];
 		if(f_str == nullptr)
 		{
 			cout << "f_str new write file"<<endl;
 			goto err;
 		}
-		strcpy(f_str,data);
-		fp = fopen(f_writePath,"w");
-		if(fp == nullptr)
+		memset(f_str,0,data_len_+1);
+		memcpy(f_str,data,data_len_);
+		fd = open(f_writePath,O_WRONLY|O_CREAT,0777);
+		if(fd < 0)
 		{
-			cerr<<"fopen f_readPath "<<endl;
+			cerr<<"open f_writePath "<<endl;
 			goto err;
 		}
-		if(fwrite(f_str,strlen(f_str),1,fp)<=0)
+		
+		if((count = write(fd,f_str,data_len_))!=data_len_)
 		{
-			cerr<<"fwrite write file"<< endl;
-			fclose(fp);
+			perror("write");
+			printf("write count is %d\n",count);
+			close(fd);
 			goto err;
 		}
 	}
@@ -189,14 +196,15 @@ err:
 	return -1;
 }
 //test  case
-int main()
+int main(int argc,char ** argv)
 {
 	using namespace std;
-	file f("cfg.h");
-	file f1("cfg.h.bak");
-	f1.setWritePath("./cfg.h.bak");
-	f.setReadPath("./cfg.h");
+	int data_len;
+	file f(argv[1]);
+	file f1(argv[2]);
+	f1.setWritePath(argv[2]);
+	f.setReadPath(argv[1]);
 	cout <<f.getFileCharaterNumber()<<endl;
-	cout<<f.readFile()<<endl;
-	cout<<f1.writeFile(f.readFile())<<endl;
+	char * str = f.readFile(&data_len); //获得读取数据的长度
+	cout<<f1.writeFile(str,data_len)<<endl;
 }
